@@ -36,8 +36,25 @@ export const getMarkdownFiles = async (root, cwd, exclude = []) => {
   const cacheKey = `${root}${cwd}${exclude.join('')}`;
 
   if (!globCacheByPath.has(cacheKey)) {
+    // Convert exclude array to function for Node.js glob API
+    const excludeFn =
+      exclude.length > 0
+        ? path =>
+            exclude.some(pattern => {
+              // Simple glob pattern matching for patterns like '**/index.md'
+              const regex = new RegExp(
+                pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*')
+              );
+              return regex.test(path);
+            })
+        : undefined;
+
     const result = Array.fromAsync(
-      glob('**/*.{md,mdx}', { root, cwd, exclude })
+      glob('**/*.{md,mdx}', {
+        root,
+        cwd,
+        ...(excludeFn && { exclude: excludeFn }),
+      })
     );
 
     globCacheByPath.set(cacheKey, result);
